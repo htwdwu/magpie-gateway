@@ -97,8 +97,10 @@ git commit -q -m "magpie gateway $VERSION" 2>/dev/null || true
 git remote remove origin 2>/dev/null || true
 git remote add origin "$REPO_URL.git"
 say "· 推送 main"
-git -c http.extraheader="Authorization: Bearer $TOKEN" push -q --set-upstream origin main \
-  || git push -q "https://x-access-token:$TOKEN@github.com/$LOGIN/$NAME.git" main
+# git over HTTPS 要 Basic 认证：用 x-access-token 拼 URL 最稳；推完立刻把 remote 换回干净地址
+git push -q "https://x-access-token:$TOKEN@github.com/$LOGIN/$NAME.git" "HEAD:main"
+git remote set-url origin "$REPO_URL.git"
+git fetch -q origin main && git branch -q --set-upstream-to=origin/main main || true
 
 # --- 4. Release + 资产（商店也能按 Release 资产取包） ---
 say "· 建 Release v$VERSION"

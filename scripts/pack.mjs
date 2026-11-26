@@ -24,7 +24,11 @@ const zipPath = path.join(OUT, zipName);
 const SKIP = [/^data\//, /^node_modules\//, /(^|\/)\.DS_Store$/, /(^|\/)\.git/];
 const names = walkFiles(PKG).filter((name) => !SKIP.some((re) => re.test(name)));
 const files = names.map((name) => ({ name, data: fs.readFileSync(path.join(PKG, name)) }));
-const buffer = buildZip(files);
+// 固定时间戳：同样的内容永远打出同样的字节，发布时 sha256 才可比对。
+const STAMP = process.env.SOURCE_DATE_EPOCH
+  ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000)
+  : new Date(Date.UTC(2020, 0, 1));
+const buffer = buildZip(files, STAMP);
 fs.writeFileSync(zipPath, buffer);
 fs.writeFileSync(path.join(OUT, 'package-files.txt'), names.join('\n') + '\n');
 

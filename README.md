@@ -62,6 +62,23 @@ ca-certificates`，再摘掉指向不存在文件的 `SSL_CERT_FILE` / `SSL_CERT
 
 ## 发布
 
+已经发布过：仓库 <https://github.com/htwdwu/magpie-gateway>、Release `v1.4.0`、
+商店 PR <https://github.com/xzyy03/Nox-Plugins-Store/pull/3>（详见 `out/PUBLISHED.md`）。
+
+一条命令建仓 + 推送 + 发版：
+
+```bash
+GITHUB_TOKEN=<classic token，勾 repo> sh scripts/push-github.sh magpie-gateway
+```
+
+只提商店 PR：
+
+```bash
+GITHUB_TOKEN=<token> node scripts/pr-store.mjs --repo https://github.com/<你>/magpie-gateway
+```
+
+只生成本地发布物料（不改远端）：
+
 ```bash
 node scripts/publish.mjs --repo https://github.com/<你>/magpie-gateway
 ```
