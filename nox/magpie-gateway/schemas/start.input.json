@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["serve", "web"],
+      "description": "serve：只起本地网关；web：网关 + 网页控制台。缺省用面板里保存的启动方式。"
+    }
+  },
+  "additionalProperties": false
+}

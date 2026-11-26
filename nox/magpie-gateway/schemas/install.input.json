@@ -1,0 +1,7 @@
+{
+  "type": "object",
+  "properties": {
+    "force": { "type": "boolean", "description": "已安装也强制重装，并重新建立 /usr/local/bin/magpie 软链。" }
+  },
+  "additionalProperties": false
+}

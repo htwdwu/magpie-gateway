@@ -1,0 +1,7 @@
+{
+  "type": "object",
+  "properties": {
+    "lines": { "type": "integer", "minimum": 1, "maximum": 400, "description": "返回最后多少行，缺省 120。" }
+  },
+  "additionalProperties": false
+}

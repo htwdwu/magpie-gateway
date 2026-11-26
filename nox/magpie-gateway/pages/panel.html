@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Magpie 网关</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px 14px calc(28px + env(safe-area-inset-bottom));
+    font: 15px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    background: Canvas; color: CanvasText;
+  }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 22px 0 8px; color: color-mix(in srgb, CanvasText 62%, Canvas); font-weight: 600; }
+  .sub { font-size: 12.5px; color: color-mix(in srgb, CanvasText 58%, Canvas); margin: 0 0 14px; }
+  .card {
+    border: 1px solid color-mix(in srgb, CanvasText 14%, Canvas);
+    border-radius: 14px; padding: 12px 14px; background: color-mix(in srgb, CanvasText 3%, Canvas);
+  }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 13.5px; }
+  .row > span:first-child { color: color-mix(in srgb, CanvasText 60%, Canvas); flex: 0 0 auto; }
+  .row > span:last-child { text-align: right; word-break: break-all; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa0a6; }
+  .dot.on { background: #22c55e; }
+  .dot.warn { background: #f59e0b; }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  button {
+    font: inherit; font-size: 13.5px; padding: 9px 14px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+    background: color-mix(in srgb, CanvasText 6%, Canvas); color: CanvasText;
+  }
+  button.primary { background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 600; }
+  button:disabled { opacity: .45; }
+  .notice { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: #b45309; white-space: pre-wrap; }
+  .notice:empty { display: none; }
+  label { display: block; font-size: 13px; margin: 12px 0 6px; color: color-mix(in srgb, CanvasText 68%, Canvas); }
+  input, select {
+    width: 100%; font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
+    background: Canvas; color: CanvasText;
+  }
+  .hint { font-size: 12px; color: color-mix(in srgb, CanvasText 52%, Canvas); margin: 4px 0 0; }
+  pre {
+    margin: 8px 0 0; padding: 10px; border-radius: 10px; max-height: 240px; overflow: auto;
+    font: 12px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
+    background: color-mix(in srgb, CanvasText 6%, Canvas);
+    border: 1px solid color-mix(in srgb, CanvasText 12%, Canvas);
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .link { color: #0d9488; text-decoration: none; }
+</style>
+</head>
+<body>
+  <h1>Magpie 网关</h1>
+  <p class="sub">本地网关 + 网页控制台，装在本机的 Linux 环境里。</p>
+
+  <div class="notice" id="bridgeWarn" style="display:none"></div>
+  <div class="card">
+    <div class="row"><span>状态</span><span class="pill"><i class="dot" id="dot"></i><span id="status">读取中…</span></span></div>
+    <div class="row"><span>版本</span><span id="version">—</span></div>
+    <div class="row"><span>启动方式</span><span id="mode">—</span></div>
+    <div class="row"><span>网关地址</span><span id="gatewayUrl">—</span></div>
+    <div class="row" id="webRow" style="display:none"><span>网页版（含 key）</span><span id="webUrl">—</span></div>
+    <div class="notice" id="notice"></div>
+    <div class="btns">
+      <button class="primary" data-act="act-start" data-busy>启动</button>
+      <button data-act="act-stop" data-busy>停止</button>
+      <button data-act="act-check" data-busy>检查</button>
+      <button data-act="act-install" data-busy>安装 / 重装</button>
+    </div>
+    <div class="btns">
+      <button data-act="act-diag" data-busy>环境自检</button>
+      <button data-act="act-log">看日志</button>
+      <button data-act="act-copy-log">复制日志</button>
+    </div>
+    <div class="btns">
+      <button data-act="act-copy-gateway">复制网关地址</button>
+      <button data-act="act-copy-web">复制网页版地址</button>
+      <button data-act="act-open-gateway">打开网关</button>
+      <button data-act="act-open-web">打开网页版</button>
+    </div>
+    <p class="hint" id="installState" style="display:none">正在安装，可能要几分钟，日志会一直往下走。</p>
+  </div>
+
+  <div class="card" id="shellHint" style="display:none; margin-top:12px">
+    <div class="row"><span>终端兜底</span><span>插件进程没有 shell，用终端执行</span></div>
+    <div class="btns">
+      <button class="primary" data-act="act-term-install" data-busy>用终端安装</button>
+      <button data-act="act-term-start" data-busy>用终端启动</button>
+      <button data-act="act-term-stop" data-busy>用终端停止</button>
+    </div>
+  </div>
+
+  <h2>设置</h2>
+  <div class="card">
+    <label for="startMode">启动方式</label>
+    <select id="startMode">
+      <option value="web">网关 + 网页（magpie web）</option>
+      <option value="serve">仅网关（magpie serve）</option>
+    </select>
+
+    <label for="gatewayPort">网关端口</label>
+    <input id="gatewayPort" type="number" min="1" max="65535" inputmode="numeric" />
+    <p class="hint">模型供应商入口默认指向 3425，改端口后那里连不上。</p>
+
+    <div data-when="web">
+      <label for="webPort">网页版端口</label>
+      <input id="webPort" type="number" min="1" max="65535" inputmode="numeric" />
+      <label for="webKey">网页版 key（MAGPIE_WEB_KEY）</label>
+      <input id="webKey" type="text" maxlength="64" placeholder="留空则每次启动随机生成" />
+      <p class="hint">至少 16 个字母、数字或 - . _ ~。</p>
+    </div>
+
+    <label for="proxyMode">代理用法</label>
+    <select id="proxyMode">
+      <option value="off">不用代理</option>
+      <option value="fallback">直连失败再用</option>
+      <option value="always">始终使用</option>
+    </select>
+
+    <div data-when="proxy">
+      <label for="proxy">安装代理</label>
+      <input id="proxy" type="text" maxlength="200" placeholder="http://127.0.0.1:10808" />
+    </div>
+
+    <label for="autoStart">随 App 自动启动</label>
+    <select id="autoStart"><option value="1">开</option><option value="0">关</option></select>
+
+    <div class="btns">
+      <button class="primary" data-act="act-save" data-busy>保存设置</button>
+    </div>
+  </div>
+
+  <h2>日志</h2>
+  <pre id="log">（暂无日志）</pre>
+
+  <script src="/__aicode/aicode.js"></script>
+  <script src="ui.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>

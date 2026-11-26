@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "settings": {
+      "type": "object",
+      "description": "要合并保存的设置；不传则只读当前设置。",
+      "properties": {
+        "startMode": { "type": "string", "enum": ["serve", "web"] },
+        "proxyMode": { "type": "string", "enum": ["off", "fallback", "always"] },
+        "proxy": { "type": "string", "description": "http://、https:// 或 socks5:// 开头的完整代理地址，≤200 字。" },
+        "autoStart": { "type": "boolean", "description": "App 启动时自动安装并拉起网关。" },
+        "gatewayPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "webPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "webKey": { "type": "string", "description": "网页版固定 key，至少 16 个字母数字或 - . _ ~；留空则每次启动随机。" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

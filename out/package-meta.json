@@ -1,0 +1,9 @@
+{
+  "id": "magpie.gateway",
+  "version": "1.4.0",
+  "file": "magpie.gateway_1.4.0.zip",
+  "bytes": 40251,
+  "sha256": "27b0dd0d5f227edaca16a40cc9dc9a26c5e198d9c9c762cc3ac67b9b5779b03e",
+  "entries": 19,
+  "rootManifest": true
+}

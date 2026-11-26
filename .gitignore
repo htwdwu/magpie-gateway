@@ -1,0 +1,4 @@
+out/logs/
+out/publish/
+node_modules/
+*.zip

@@ -1,0 +1,195 @@
+{
+  "manifestVersion": 1,
+  "id": "magpie.gateway",
+  "name": {
+    "default": "Magpie Gateway",
+    "zh-CN": "Magpie 网关"
+  },
+  "version": "1.4.0",
+  "publisher": "magpie",
+  "repository": "https://github.com/xzyy03/Nox-Plugins-Store",
+  "description": {
+    "default": "Installs magpie inside the app's Linux environment, keeps its local gateway (or gateway plus web console) running, and adds a native panel for status, start mode, ports, web key and the install proxy. Installs by downloading the release binary directly, verifies its sha256, degrades gracefully when the container has no CA store, and reports exactly why an install failed.",
+    "zh-CN": "在 App 的 Linux 环境里自动安装 magpie，托管它的本地网关（或网关 + 网页控制台），并提供原生面板查看状态、启动/停止、切换启动方式、改端口与网页 key、配置安装代理。安装走直连下载 + sha256 校验，容器缺 CA 包时自动降级，失败时给出具体原因与环境自检。"
+  },
+  "license": "MIT",
+  "icon": "server",
+  "engines": {
+    "pluginApi": "^1.0.0"
+  },
+  "runtime": {
+    "type": "javascript",
+    "entry": "dist/main.js",
+    "resident": true
+  },
+  "contributes": {
+    "tools": [
+      {
+        "id": "status",
+        "title": {
+          "zh-CN": "网关状态",
+          "default": "Gateway status"
+        },
+        "description": {
+          "zh-CN": "读 magpie 网关状态：装没装、版本、在不在跑（本插件起的还是别处起的）、网关地址、网页版地址（含 key）、启动方式、代理、是否需要重启、最近的错误与日志。排查「网关连不上」「装好了没」先用它。",
+          "default": "Read magpie gateway state: installed, version, running (started here or elsewhere), gateway URL, web console URL with key, start mode, proxy, needs-restart flag, last error and recent log."
+        },
+        "inputSchema": "schemas/status.input.json",
+        "handler": "tools.status"
+      },
+      {
+        "id": "install",
+        "title": {
+          "zh-CN": "安装网关",
+          "default": "Install gateway"
+        },
+        "description": {
+          "zh-CN": "在 App 的 Linux 环境里安装 magpie：下载官方安装脚本并执行，缺 curl 时先 apt-get 装；按设置决定直连还是走代理，直连失败自动改用代理重试。已装好时直接返回，force=true 强制重装。可能耗时几分钟。",
+          "default": "Install magpie inside the app's Linux environment with the official installer, apt-get curl first if missing, direct or through the configured proxy with automatic fallback. force=true reinstalls. Can take minutes."
+        },
+        "inputSchema": "schemas/install.input.json",
+        "handler": "tools.install"
+      },
+      {
+        "id": "start",
+        "title": {
+          "zh-CN": "启动网关",
+          "default": "Start gateway"
+        },
+        "description": {
+          "zh-CN": "启动 magpie 网关：mode=serve 只起本地网关（默认 3425，OpenAI 兼容 /v1），mode=web 同时起网页控制台（默认 3430，地址带 key）。还没装会先装，已经在跑不会重复起。",
+          "default": "Start the magpie gateway: mode=serve for the local gateway only (port 3425, OpenAI-compatible /v1), mode=web to add the web console (port 3430, URL carries the key). Installs first when missing."
+        },
+        "inputSchema": "schemas/start.input.json",
+        "handler": "tools.start"
+      },
+      {
+        "id": "stop",
+        "title": {
+          "zh-CN": "停止网关",
+          "default": "Stop gateway"
+        },
+        "description": {
+          "zh-CN": "停止由本插件启动的 magpie 网关进程；别处启动的进程不动（那需要自己在终端里停）。",
+          "default": "Stop the magpie gateway process this plugin started. Processes started elsewhere are left alone."
+        },
+        "inputSchema": "schemas/stop.input.json",
+        "handler": "tools.stop"
+      },
+      {
+        "id": "settings",
+        "title": {
+          "zh-CN": "网关设置",
+          "default": "Gateway settings"
+        },
+        "description": {
+          "zh-CN": "读或改网关设置：startMode（serve/web）、proxyMode（off/fallback/always）、proxy、autoStart、gatewayPort、webPort、webKey。传 settings 就合并保存（会校验端口与 key），改到启动方式或端口会自动重启网关；不传只读。",
+          "default": "Read or update gateway settings: startMode (serve/web), proxyMode (off/fallback/always), proxy, autoStart, gatewayPort, webPort, webKey. Passing settings merges and saves them; start mode or port changes restart the gateway."
+        },
+        "inputSchema": "schemas/settings.input.json",
+        "handler": "tools.settings"
+      },
+      {
+        "id": "logs",
+        "title": {
+          "zh-CN": "网关日志",
+          "default": "Gateway log"
+        },
+        "description": {
+          "zh-CN": "读网关日志尾巴：安装输出、启动命令、退出码、健康检查结果都在这里。装不上或起不来时用它看卡在哪一步。",
+          "default": "Read the tail of the gateway log: install output, start commands, exit codes and health checks. Use it when install or start fails."
+        },
+        "inputSchema": "schemas/logs.input.json",
+        "handler": "tools.logs"
+      },
+      {
+        "id": "diag",
+        "title": {
+          "zh-CN": "环境自检",
+          "default": "Environment check"
+        },
+        "description": {
+          "zh-CN": "看容器里到底有什么：平台与架构、node 版本、HOME 与 magpie 路径、sh/bash/curl/apt 是否存在、候选产物名、到 usemagpie.ai 与 github.com 的连通性、当前代理与最近一次安装错误。装不上、起不来先看它。",
+          "default": "Inspect the container: platform and arch, node version, HOME and the magpie path, whether sh/bash/curl/apt exist, candidate release assets, reachability of usemagpie.ai and github.com, current proxy and the last install error."
+        },
+        "inputSchema": "schemas/diag.input.json",
+        "handler": "tools.diag"
+      },
+      {
+        "id": "check",
+        "title": {
+          "zh-CN": "检查网关",
+          "default": "Check gateway"
+        },
+        "description": {
+          "zh-CN": "跑一遍诊断并写进日志：magpie --version、magpie healthcheck、进程归属、网关与网页版端口是否在监听、当前启动方式与代理。",
+          "default": "Run diagnostics into the log: magpie --version, magpie healthcheck, process ownership, whether the gateway and web ports listen, current start mode and proxy."
+        },
+        "inputSchema": "schemas/check.input.json",
+        "handler": "tools.check"
+      }
+    ],
+    "hooks": [
+      {
+        "id": "autostart",
+        "event": "app.started",
+        "mode": "observe",
+        "handler": "hooks.appStarted"
+      }
+    ],
+    "providers": [
+      {
+        "id": "gateway",
+        "name": {
+          "zh-CN": "Magpie 网关（本地）",
+          "default": "Magpie gateway (local)"
+        },
+        "description": {
+          "zh-CN": "magpie 网关的 OpenAI 兼容接口（http://127.0.0.1:3425/v1）。网关没起来时这里连不上，先在面板里启动。",
+          "default": "OpenAI-compatible endpoint of the local magpie gateway at http://127.0.0.1:3425/v1. Start the gateway from the panel first."
+        },
+        "format": "openai",
+        "baseUrl": "http://127.0.0.1:3425/v1"
+      }
+    ],
+    "uiEntries": [
+      {
+        "id": "panel",
+        "title": {
+          "zh-CN": "Magpie 网关",
+          "default": "Magpie gateway"
+        },
+        "slot": "settings.ai",
+        "page": "pages/panel.html",
+        "icon": "server"
+      },
+      {
+        "id": "panel-menu",
+        "title": {
+          "zh-CN": "Magpie 网关",
+          "default": "Magpie gateway"
+        },
+        "slot": "chat.header.menu",
+        "page": "pages/panel.html",
+        "icon": "server"
+      }
+    ],
+    "workspaceTools": [
+      {
+        "id": "gateway",
+        "title": {
+          "zh-CN": "Magpie 网关",
+          "default": "Magpie gateway"
+        },
+        "description": {
+          "zh-CN": "查看网关状态、启动/停止、安装，以及改启动方式、端口、网页 key 和安装代理。",
+          "default": "Gateway status, start/stop, install, and settings for start mode, ports, web key and install proxy."
+        },
+        "icon": "server",
+        "category": "环境",
+        "pageFile": "pages/panel.html"
+      }
+    ],
+    "configPage": "pages/config.html"
+  }
+}
