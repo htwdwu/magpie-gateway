@@ -41,6 +41,8 @@ const elements = new Map();
 for (const m of html.matchAll(/<(\w+)([^>]*\bid="([A-Za-z0-9_-]+)"[^>]*)>/g)) {
   const node = makeElement(m[3]);
   for (const a of m[2].matchAll(/([a-z-]+)="([^"]*)"/g)) node.attrs[a[1]] = a[2];
+  // 真实 DOM 里 class 会落到 className 上，影子也要照做
+  if (node.attrs.class) node.className = node.attrs.class;
   if (m[1] === 'select') node.value = (html.match(new RegExp(`<select[^>]*id="${m[3]}"[\\s\\S]*?</select>`)) || [''])[0].match(/value="([^"]+)"/)?.[1] || '';
   elements.set(m[3], node);
 }
@@ -83,6 +85,7 @@ const document = {
     ];
     return pool.filter((node) => node.attrs && node.attrs[name] !== undefined && (wanted === null || node.attrs[name] === wanted));
   },
+  querySelector(selector) { return document.querySelectorAll(selector)[0] || null; },
   addEventListener(type, fn) { if (type === 'click') clickListener = fn; },
 };
 
@@ -91,6 +94,7 @@ const clipboard = [];
 const bashCalls = [];
 const toasts = [];
 const opened = [];
+const inApp = [];
 
 const stateBase = {
   platformOk: true, shellOk: true, installed: true, version: 'magpie 0.1.4841', running: false, owned: false,
@@ -130,6 +134,7 @@ const api = {
   clipboard: { write(text) { clipboard.push(String(text)); return Promise.resolve(); } },
   bash(cmd) { bashCalls.push(String(cmd)); return Promise.resolve('ok'); },
   ui: { openUrl(url) { opened.push(String(url)); return Promise.resolve(); } },
+  webview: { login(params) { inApp.push(params); return Promise.resolve({ finalUrl: params.url, cookies: {} }); } },
 };
 
 // 桥的全局名从真实页面里取（/__<name>/<name>.js），换名字也不用改测试。
@@ -180,6 +185,7 @@ try {
   check('web 模式下网页版端口可见', whenNodes[0].style.display === '', whenNodes[0].style.display);
   check('代理关时隐藏代理地址', whenNodes[1].style.display === 'none', whenNodes[1].style.display);
   check('没在跑时圆点是灰的', elements.get('dot').className === 'dot', elements.get('dot').className);
+  check('刚打开时保存按钮是禁用的', document.querySelector('[data-act="act-save"]').disabled === true, String(document.querySelector('[data-act="act-save"]').disabled));
 
   nextState = { ...stateBase, running: true, owned: true, canStart: false, canStop: true };
   await UI.poll();
@@ -206,7 +212,12 @@ try {
 
   clickAct('act-open-gateway');
   await wait(20);
-  check('打开网关走 ui.openUrl', opened.includes('http://127.0.0.1:3425'), opened.join(','));
+  check('打开网关走 App 内置浏览器', inApp.length > 0 && inApp[inApp.length - 1].url === 'http://127.0.0.1:3425', JSON.stringify(inApp[inApp.length - 1] || null));
+  check('内置浏览器带关闭按钮与标题', inApp.length > 0 && inApp[inApp.length - 1].showClose === true && inApp[inApp.length - 1].title === 'Magpie 网关', '');
+  check('没有跳外部浏览器', !opened.includes('http://127.0.0.1:3425'), opened.join(','));
+  clickAct('act-open-web');
+  await wait(20);
+  check('打开网页版也走内置浏览器且带 key', inApp.some((c) => String(c.url).includes('?k=')), '');
 
   elements.get('proxyMode').value = 'always';
   elements.get('proxyMode').dispatch('change');
@@ -221,6 +232,8 @@ try {
   elements.get('startMode').dispatch('change');
 
   elements.get('gatewayPort').value = '3999';
+  elements.get('gatewayPort').dispatch('input');
+  check('改了输入后保存按钮可用', document.querySelector('[data-act="act-save"]').disabled === false, '');
   elements.get('webPort').value = '3998';
   elements.get('autoStart').value = '0';
   calls.length = 0;
@@ -250,12 +263,33 @@ try {
   check('自检结果写进日志区', /环境自检/.test(elements.get('log').textContent) && /usemagpie/.test(elements.get('log').textContent),
     elements.get('log').textContent.slice(0, 60));
   clipboard.length = 0;
+  const logBox = elements.get('log');
+  check('日志默认收起', String(logBox.className).includes('collapsed'), logBox.className);
+  clickAct('act-toggle-log');
+  await wait(20);
+  check('点展开后日志不再收起', !String(logBox.className).includes('collapsed'), logBox.className);
+  check('展开按钮文案变化', elements.get('logToggle').textContent === '收起', elements.get('logToggle').textContent);
+  clickAct('act-toggle-log');
+  await wait(20);
+  check('再点一次收回去', String(logBox.className).includes('collapsed'), logBox.className);
+
   clickAct('act-copy-log');
   await wait(40);
   check('复制日志拿到自检文本', clipboard.some((c) => c.includes('平台 linux/arm64')), clipboard.join('|').slice(0, 40));
   clickAct('act-log');
   await wait(40);
   check('看日志切回实时日志', /line-1/.test(elements.get('log').textContent), elements.get('log').textContent.slice(0, 40));
+
+  // 老宿主没有内置浏览器时要退回外部打开，并给一句提示
+  {
+    const keep = api.webview;
+    delete api.webview;
+    opened.length = 0;
+    const via = await UI.openInApp('http://127.0.0.1:3425', 'Magpie 网关');
+    check('没有内置浏览器时退回外部打开', via === 'external' && opened.includes('http://127.0.0.1:3425'), via);
+    check('退外部时提示一次', toasts.some((t) => /没有内置浏览器/.test(t)), toasts.join(','));
+    api.webview = keep;
+  }
 
   nextState = { ...stateBase, shellOk: false };
   await UI.poll();

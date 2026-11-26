@@ -66,7 +66,11 @@
     display: inline-flex; align-items: center; gap: 6px; flex: none;
     font-size: 12.5px; font-weight: 600; color: var(--muted);
     padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--surface-sunken);
+    transition: background .2s ease, color .2s ease;
   }
+  .badge.ok { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); color: color-mix(in srgb, var(--ok) 72%, var(--text)); }
+  .badge.warn { background: var(--warn-weak); color: var(--warn); }
+  .badge.err { background: var(--danger-weak); color: var(--danger); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: #9aa3ab; flex: none; transition: background .24s ease; }
   .dot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
   .dot.warn { background: var(--warn); }
@@ -100,6 +104,14 @@
   .addr .value .base { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .addr .value.plain { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .icon-btn svg { display: block; }
+  .mini {
+    flex: none; display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 9px;
+    border: 0; border-radius: 9px; background: transparent; font-size: 12.5px; font-weight: 550;
+    color: color-mix(in srgb, var(--text) 70%, var(--bg)); cursor: pointer;
+    transition: background .16s ease, color .16s ease, transform .12s ease;
+  }
+  .mini:active { background: var(--surface-sunken); color: var(--text); transform: scale(.96); }
+  .mini svg { display: block; }
   .icon-btn {
     flex: none; width: 38px; height: 38px; border: 0; border-radius: 10px;
     background: transparent; color: color-mix(in srgb, var(--text) 66%, var(--bg)); font-size: 15px; line-height: 1;
@@ -173,6 +185,7 @@
   .logcard header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid var(--line); }
   .logcard header .t { font-size: 12.5px; font-weight: 600; color: var(--muted); }
   .logcard .btns { display: flex; gap: 6px; }
+  pre.collapsed { max-height: 78px; overflow: hidden; }
   .logcard .btns button { min-height: 30px; padding: 0 10px; font-size: 12px; background: transparent; border-color: transparent; color: var(--accent); }
   pre {
     margin: 0; padding: 12px; max-height: 220px; overflow: auto;
@@ -208,7 +221,7 @@
   <div class="wrap">
     <header>
       <h1>Magpie 网关</h1>
-      <span class="badge"><i class="dot" id="dot"></i><span id="status">读取中</span></span>
+      <span class="badge" id="badge"><i class="dot" id="dot"></i><span id="status">读取中</span></span>
     </header>
 
     <div class="device">
@@ -225,14 +238,14 @@
       <div class="addr">
         <span class="label">网关</span>
         <span class="value" id="gatewayUrl">—</span>
-        <button class="icon-btn" data-act="act-copy-gateway" aria-label="复制网关地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
+        <button class="mini" data-act="act-copy-gateway" aria-label="复制网关地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
       </div>
 
       <div class="addr" id="webRow" style="display:none">
         <span class="label">网页版</span>
         <span class="value" id="webUrl">—</span>
         <button class="icon-btn" data-act="act-toggle-key" aria-label="显示或隐藏 key"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6.2 6 12 6s9.4 6 9.4 6-3.6 6-9.4 6-9.4-6-9.4-6Z"/><circle cx="12" cy="12" r="2.6"/></svg></button>
-        <button class="icon-btn" data-act="act-copy-web" aria-label="复制网页版地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
+        <button class="mini" data-act="act-copy-web" aria-label="复制网页版地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
       </div>
 
       <div class="notice-callout" id="notice"></div>
@@ -317,9 +330,10 @@
           <button data-act="act-log">实时</button>
           <button data-act="act-diag">自检</button>
           <button data-act="act-copy-log">复制</button>
+          <button data-act="act-toggle-log" id="logToggle">展开</button>
         </span>
       </header>
-      <pre id="log">（暂无日志）</pre>
+      <pre id="log" class="collapsed">（暂无日志）</pre>
     </div>
   </div>
 

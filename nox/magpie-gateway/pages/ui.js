@@ -42,6 +42,40 @@
     return Promise.resolve(false);
   }
 
+  /**
+   * 在 App 内置浏览器里打开：走宿主的受控全屏 WebView（webview.login 那条通道），
+   * 不跳第三方 App。老宿主没有这个能力时才退回 ui.openUrl。
+   */
+  function openInApp(url, title) {
+    if (!url) return Promise.resolve('none');
+    var target = String(url);
+    var params = {
+      url: target,
+      title: title || 'Magpie',
+      finishText: '关闭',
+      showClose: true,
+      cookieUrls: [target.split('?')[0].replace(/^(https?:\/\/[^/]+).*$/, '$1')],
+    };
+    function viaBridge() {
+      if (api.webview && typeof api.webview.login === 'function') return Promise.resolve(api.webview.login(params));
+      if (typeof api.call === 'function') return Promise.resolve(api.call('webview.login', params));
+      return Promise.reject(new Error('no webview'));
+    }
+    return viaBridge().then(function (result) {
+      return result && result.finalUrl ? 'inapp' : 'inapp';
+    }).catch(function (err) {
+      var code = String((err && (err.code || err.message)) || '');
+      if (/LOGIN_CANCELED|CANCEL/i.test(code)) return 'inapp';
+      if (/no webview/.test(code)) {
+        // 老宿主：只能交系统浏览器，明确告诉用户这次为什么会跳出去
+        toast('这个 App 版本没有内置浏览器，已用外部浏览器打开');
+        return openUrl(target).then(function () { return 'external'; });
+      }
+      toast('打开失败：' + code.slice(0, 30));
+      return 'error';
+    });
+  }
+
   function openUrl(url) {
     if (!url || !api) return Promise.resolve();
     if (api.ui && typeof api.ui.openUrl === 'function') return Promise.resolve(api.ui.openUrl(String(url)));
@@ -101,9 +135,15 @@
     var node = el(id);
     if (node) node.style.display = on ? '' : 'none';
   }
+  var formDirty = false;
+
   function setBusy(busy) {
     var nodes = document.querySelectorAll('[data-busy]');
-    for (var i = 0; i < nodes.length; i += 1) nodes[i].disabled = Boolean(busy);
+    for (var i = 0; i < nodes.length; i += 1) {
+      var node = nodes[i];
+      var isSave = node.getAttribute && node.getAttribute('data-act') === 'act-save';
+      node.disabled = Boolean(busy) || (isSave && !formDirty);
+    }
   }
 
   function esc(text) {
@@ -160,6 +200,12 @@
     applyVisibility();
   }
 
+  function markDirty(dirty) {
+    formDirty = Boolean(dirty);
+    var btn = document.querySelector('[data-act="act-save"]');
+    if (btn) btn.disabled = !formDirty;
+  }
+
   function applyVisibility() {
     var webMode = el('startMode') && el('startMode').value === 'web';
     var useProxy = el('proxyMode') && el('proxyMode').value !== 'off';
@@ -187,6 +233,7 @@
       setBusy(false);
       toast(result && result.message ? result.message : '设置已保存');
       draftFilled = false;
+      markDirty(false);
       if (result && result.state) render(result.state);
       return result;
     }).catch(function (err) {
@@ -245,10 +292,12 @@
       if (!state || !state.webUrl) return Promise.resolve(toast('当前不是网页版模式'));
       return copy(state.webUrl).then(function (ok) { toast(ok ? '已复制网页版地址' : '复制失败'); });
     },
-    'act-open-gateway': function (state) { return openUrl(state ? state.gatewayUrl : ''); },
+    'act-open-gateway': function (state) {
+      return openInApp(state ? state.gatewayUrl : '', 'Magpie 网关');
+    },
     'act-open-web': function (state) {
       if (!state || !state.webUrl) return Promise.resolve(toast('当前不是网页版模式'));
-      return openUrl(state.webUrl);
+      return openInApp(state.webUrl, 'Magpie 网页控制台');
     },
     'act-toggle-key': function (state) {
       keyVisible = !keyVisible;
@@ -278,6 +327,14 @@
         setBusy(false);
         toast(err && err.message ? String(err.message).slice(0, 40) : '自检失败');
       });
+    },
+    'act-toggle-log': function () {
+      var node = el('log');
+      if (!node) return Promise.resolve();
+      var collapsed = node.className.indexOf('collapsed') >= 0;
+      node.className = collapsed ? '' : 'collapsed';
+      setText('logToggle', collapsed ? '收起' : '展开');
+      return Promise.resolve();
     },
     'act-copy-log': function () {
       var text = diagText && viewMode === 'diag' ? diagText : (lastState ? String(lastState.logTail || '') : '');
@@ -314,6 +371,9 @@
 
     var dot = el('dot');
     if (dot) dot.className = 'dot' + (state.running ? ' on' : state.installed ? '' : ' warn');
+    var badge = state.running ? 'ok' : state.lastError ? 'err' : (state.installed ? 'warn' : 'warn');
+    var badgeNode = el('badge');
+    if (badgeNode) badgeNode.className = 'badge ' + badge;
 
     var startBtn = el('startBtn');
     var stopBtn = el('stopBtn');
@@ -364,6 +424,13 @@
     ['startMode', 'proxyMode'].forEach(function (id) {
       if (el(id)) el(id).addEventListener('change', applyVisibility);
     });
+    ['startMode', 'proxyMode', 'proxy', 'autoStart', 'gatewayPort', 'webPort', 'webKey'].forEach(function (id) {
+      var node = el(id);
+      if (!node) return;
+      node.addEventListener('input', function () { markDirty(true); });
+      node.addEventListener('change', function () { markDirty(true); });
+    });
+    markDirty(false);
     return poll().then(function () {
       if (timer) clearInterval(timer);
       timer = setInterval(poll, 2000);
@@ -372,6 +439,7 @@
 
   window.MagpieUI = {
     mount: mount,
+    openInApp: openInApp,
     poll: poll,
     render: render,
     save: save,
