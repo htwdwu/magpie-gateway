@@ -105,6 +105,21 @@ if (fs.existsSync(uiJs)) {
   }
 }
 
+// ---------- 4b. 每个动作都要有触发点，别悄悄丢功能 ----------
+if (fs.existsSync(uiJs)) {
+  const ui = fs.readFileSync(uiJs, 'utf8');
+  const handled = new Set([...ui.matchAll(/'(act-[a-z-]+)':/g)].map((m) => m[1]));
+  const triggered = new Set();
+  for (const page of ['pages/panel.html', 'pages/config.html']) {
+    const abs = path.join(PKG, page);
+    if (!fs.existsSync(abs)) continue;
+    for (const m of fs.readFileSync(abs, 'utf8').matchAll(/data-act="([a-z-]+)"/g)) triggered.add(m[1]);
+  }
+  for (const act of handled) {
+    if (!triggered.has(act)) err(`动作 ${act} 在 ui.js 里有处理函数，但两个页面都没有按钮触发它（功能会像丢了）`);
+  }
+}
+
 // ---------- 5. runtime ----------
 const entry = manifest.runtime?.entry;
 if (entry) {

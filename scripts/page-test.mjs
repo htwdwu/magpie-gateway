@@ -54,6 +54,15 @@ for (const m of html.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)) {
   for (const a of m[1].matchAll(/([a-z-]+)="([^"]*)"/g)) node.attrs[a[1]] = a[2];
   buttons.push(node);
 }
+// 有的动作挂在整行（div[data-act]）上，不只按钮；两类都收进来，按动作去重
+for (const m of html.matchAll(/<(\w+)([^>]*\bdata-act="([a-z-]+)"[^>]*)>/g)) {
+  if (m[1] === 'button') continue;
+  if (buttons.some((b) => b.attrs['data-act'] === m[3])) continue;
+  const node = makeElement('row-' + m[3]);
+  for (const a of m[2].matchAll(/([a-z-]+)="([^"]*)"/g)) node.attrs[a[1]] = a[2];
+  buttons.push(node);
+}
+
 const whenNodes = ['web', 'proxy'].map((k) => {
   const node = makeElement('when-' + k);
   node.attrs['data-when'] = k;
