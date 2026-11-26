@@ -69,3 +69,10 @@ sha256：cb160a2cf6b89ae7a2ee07779c207e563ead1c5ae14fa36dcfdc406e3ff59f4d
   端口改离 3425 后那一项连不上，面板会提示。
 - 容器完全没有外网时无法自装：填代理，或先在终端执行一次官方安装脚本。
 - 网页版不设固定 key 时每次重启换 key，需要重新复制地址。
+
+## 六、发布
+
+- 源码：https://github.com/htwdwu/magpie-gateway
+- Release v1.4.0 资产 `magpie.gateway_1.4.0.zip`，sha256 `1c59f2f958706e50a788eb79add7b4704a3d906af0b28e52bfbcf04a92f78c2a`（可复现构建）
+- 商店 PR：https://github.com/xzyy03/Nox-Plugins-Store/pull/3
+- 打包已固定时间戳：同一份内容每次打包 sha256 相同，发布核对不会因为时间漂移而失败

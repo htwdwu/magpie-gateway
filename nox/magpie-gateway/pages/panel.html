@@ -3,139 +3,323 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
 <title>Magpie 网关</title>
 <style>
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; }
+  :root {
+    --bg: #f5f6f7;
+    --surface: #ffffff;
+    --surface-sunken: #eff1f3;
+    --line: #e2e5e8;
+    --text: #16191c;
+    --muted: #566068;
+    --accent: #0f766e;
+    --accent-ink: #ffffff;
+    --accent-weak: #e6f2f0;
+    --danger: #b42318;
+    --danger-weak: #fdecea;
+    --warn: #b54708;
+    --warn-weak: #fef4e6;
+    --ok: #12805c;
+    --radius-lg: 18px;
+    --radius: 12px;
+    --radius-sm: 9px;
+    --pad: 16px;
+    --font: -apple-system, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101315;
+      --surface: #171b1e;
+      --surface-sunken: #1e2327;
+      --line: #2a3035;
+      --text: #e8ebed;
+      --muted: #a7b0b7;
+      --accent: #2dd4bf;
+      --accent-ink: #06201d;
+      --accent-weak: #10322e;
+      --danger: #ff8a7d;
+      --danger-weak: #2d1815;
+      --warn: #f5c26b;
+      --warn-weak: #2b2011;
+      --ok: #4ade80;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
   body {
-    margin: 0; padding: 16px 14px calc(28px + env(safe-area-inset-bottom));
-    font: 15px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
-    background: Canvas; color: CanvasText;
+    margin: 0;
+    padding: 0 0 calc(124px + env(safe-area-inset-bottom));
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 var(--font);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
   }
-  h1 { font-size: 17px; margin: 0 0 4px; }
-  h2 { font-size: 14px; margin: 22px 0 8px; color: color-mix(in srgb, CanvasText 62%, Canvas); font-weight: 600; }
-  .sub { font-size: 12.5px; color: color-mix(in srgb, CanvasText 58%, Canvas); margin: 0 0 14px; }
-  .card {
-    border: 1px solid color-mix(in srgb, CanvasText 14%, Canvas);
-    border-radius: 14px; padding: 12px 14px; background: color-mix(in srgb, CanvasText 3%, Canvas);
+  .wrap { padding: 14px var(--pad) 0; display: flex; flex-direction: column; gap: 14px; }
+
+  /* 页头压成一行：标题 + 状态徽标 */
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 2px 2px 0; }
+  h1 { margin: 0; font-size: 19px; line-height: 1.3; font-weight: 650; letter-spacing: -.01em; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-size: 12.5px; font-weight: 600; color: var(--muted);
+    padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--surface-sunken);
   }
-  .row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 13.5px; }
-  .row > span:first-child { color: color-mix(in srgb, CanvasText 60%, Canvas); flex: 0 0 auto; }
-  .row > span:last-child { text-align: right; word-break: break-all; font-variant-numeric: tabular-nums; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa0a6; }
-  .dot.on { background: #22c55e; }
-  .dot.warn { background: #f59e0b; }
-  .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #9aa3ab; flex: none; transition: background .24s ease; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 18%, transparent); }
+  .dot.warn { background: var(--warn); }
+
+  /* 设备卡：可点的整块才给卡片与描边 */
+  .device {
+    background: var(--surface); border-radius: var(--radius-lg);
+    padding: 14px 12px 6px; box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent);
+  }
+  .device-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .status-lg { font-size: 17px; font-weight: 650; line-height: 1.35; letter-spacing: -.01em; }
+  .meta { font: 12px/1.4 var(--mono); color: var(--muted); }
+
+  .addr { display: flex; align-items: center; gap: 8px; padding: 2px 0; margin-top: 6px; }
+  .addr:first-of-type { margin-top: 12px; }
+  .addr .label { font-size: 12.5px; color: var(--muted); flex: none; width: 62px; }
+  .keychip {
+    flex: none; padding: 1px 7px; border-radius: 6px;
+    font-size: 11.5px; color: var(--muted); background: var(--surface-sunken);
+    vertical-align: 1px;
+  }
+  .addr .value {
+    font: 12.5px/1.45 var(--mono); color: var(--text); flex: 1 1 auto; min-width: 0;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .addr .value .base { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .addr .value.plain { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .icon-btn svg { display: block; }
+  .icon-btn {
+    flex: none; width: 38px; height: 38px; border: 0; border-radius: 10px;
+    background: transparent; color: color-mix(in srgb, var(--text) 66%, var(--bg)); font-size: 15px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .16s ease, color .16s ease, transform .12s ease;
+  }
+  .icon-btn:active { background: var(--surface-sunken); color: var(--text); transform: scale(.94); }
+
+  /* 提示：只在有事时出现，用竖条分级，不套卡片 */
+  .notice-callout {
+    display: none; gap: 9px; margin: 10px 0 4px; padding: 10px 12px;
+    border-radius: var(--radius-sm); border-left: 3px solid var(--warn);
+    background: var(--warn-weak); color: var(--warn); font-size: 13px; line-height: 1.55;
+    white-space: pre-wrap;
+  }
+  .notice-callout.show { display: block; }
+  .notice-callout.show::before { content: "! "; font-weight: 700; }
+  .notice-callout.is-error { border-left-color: var(--danger); background: var(--danger-weak); color: var(--danger); }
+
+  /* 动作：一个实心主动作，其余降级成描边与文字 */
+  .actions { display: flex; gap: 8px; padding: 14px 0 4px; }
   button {
-    font: inherit; font-size: 13.5px; padding: 9px 14px; border-radius: 10px;
-    border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
-    background: color-mix(in srgb, CanvasText 6%, Canvas); color: CanvasText;
+    font: inherit; color: var(--text); cursor: pointer;
+    border: 0; background: var(--surface-sunken);
+    border-radius: var(--radius); min-height: 44px; padding: 0 16px;
+    font-size: 14.5px; font-weight: 550; transition: transform .12s ease, background .18s ease, opacity .18s ease;
   }
-  button.primary { background: #0d9488; border-color: #0d9488; color: #fff; font-weight: 600; }
+  button:active { transform: scale(.98); }
   button:disabled { opacity: .45; }
-  .notice { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: #b45309; white-space: pre-wrap; }
-  .notice:empty { display: none; }
-  label { display: block; font-size: 13px; margin: 12px 0 6px; color: color-mix(in srgb, CanvasText 68%, Canvas); }
+  button.primary {
+    flex: 1 1 auto; background: var(--accent); color: var(--accent-ink); font-weight: 650;
+  }
+  button.primary.is-stop { background: var(--danger-weak); color: var(--danger); }
+  button.ghost { background: transparent; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 12px; }
+  .chips button {
+    min-height: 38px; padding: 0 12px; font-size: 13px; font-weight: 500;
+    color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1px var(--line);
+  }
+  .chips button:active { color: var(--text); }
+
+  .progress { display: none; height: 3px; border-radius: 3px; overflow: hidden; background: var(--surface-sunken); margin: 2px 0 10px; }
+  .progress.show { display: block; }
+  .progress span {
+    display: block; height: 100%; width: 40%; border-radius: 3px; background: var(--accent);
+    animation: slide 1.1s ease-in-out infinite;
+  }
+  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+
+  /* 分组只用空间与标题，不画框 */
+  section { padding: 0 2px; }
+  h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 4px; }
+  label { display: block; font-size: 13px; font-weight: 550; margin-bottom: 6px; }
+  .hint { margin: 6px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
   input, select {
-    width: 100%; font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 10px;
-    border: 1px solid color-mix(in srgb, CanvasText 18%, Canvas);
-    background: Canvas; color: CanvasText;
+    width: 100%; min-height: 46px; padding: 11px 12px; font: inherit; font-size: 16px;
+    color: var(--text); background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-sm); appearance: none;
   }
-  .hint { font-size: 12px; color: color-mix(in srgb, CanvasText 52%, Canvas); margin: 4px 0 0; }
+  select { padding-right: 34px; background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 19px, calc(100% - 13px) 19px; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  input:focus-visible, select:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .row2 { display: flex; gap: 10px; }
+  .row2 > .field { flex: 1 1 0; min-width: 0; }
+
+  /* 日志：等宽块，自带标题栏 */
+  .logcard { background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 2px color-mix(in srgb, var(--text) 6%, transparent); }
+  .logcard header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px 8px 12px; border-bottom: 1px solid var(--line); }
+  .logcard header .t { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .logcard .btns { display: flex; gap: 6px; }
+  .logcard .btns button { min-height: 30px; padding: 0 10px; font-size: 12px; background: transparent; border-color: transparent; color: var(--accent); }
   pre {
-    margin: 8px 0 0; padding: 10px; border-radius: 10px; max-height: 240px; overflow: auto;
-    font: 12px/1.45 ui-monospace, "SF Mono", Menlo, monospace;
-    background: color-mix(in srgb, CanvasText 6%, Canvas);
-    border: 1px solid color-mix(in srgb, CanvasText 12%, Canvas);
-    white-space: pre-wrap; word-break: break-all;
+    margin: 0; padding: 12px; max-height: 220px; overflow: auto;
+    font: 12px/1.6 var(--mono); color: var(--text); white-space: pre-wrap; word-break: break-word;
   }
-  .link { color: #0d9488; text-decoration: none; }
+
+  /* 保存栏吸底，隐藏键盘时也够得着 */
+  .savebar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  .savebar button { width: 100%; }
+
+  .bridge-warn { display: none; margin: 0 var(--pad); padding: 10px 12px; border-radius: var(--radius-sm);
+    background: var(--danger-weak); color: var(--danger); font-size: 13px; line-height: 1.5; }
+
+  /* 首次进入：先给骨架，避免空屏跳字 */
+  .skeleton { display: block; }
+  .skeleton .bar { height: 12px; border-radius: 6px; background: var(--surface-sunken); margin: 8px 0; }
+  .skeleton .bar.w60 { width: 60%; }
+  .skeleton .bar.w40 { width: 40%; }
+  .skeleton.hide { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
-  <h1>Magpie 网关</h1>
-  <p class="sub">本地网关 + 网页控制台，装在本机的 Linux 环境里。</p>
+  <div class="bridge-warn" id="bridgeWarn"></div>
 
-  <div class="notice" id="bridgeWarn" style="display:none"></div>
-  <div class="card">
-    <div class="row"><span>状态</span><span class="pill"><i class="dot" id="dot"></i><span id="status">读取中…</span></span></div>
-    <div class="row"><span>版本</span><span id="version">—</span></div>
-    <div class="row"><span>启动方式</span><span id="mode">—</span></div>
-    <div class="row"><span>网关地址</span><span id="gatewayUrl">—</span></div>
-    <div class="row" id="webRow" style="display:none"><span>网页版（含 key）</span><span id="webUrl">—</span></div>
-    <div class="notice" id="notice"></div>
-    <div class="btns">
-      <button class="primary" data-act="act-start" data-busy>启动</button>
-      <button data-act="act-stop" data-busy>停止</button>
-      <button data-act="act-check" data-busy>检查</button>
-      <button data-act="act-install" data-busy>安装 / 重装</button>
+  <div class="wrap">
+    <header>
+      <h1>Magpie 网关</h1>
+      <span class="badge"><i class="dot" id="dot"></i><span id="status">读取中</span></span>
+    </header>
+
+    <div class="device">
+      <div class="skeleton" id="skeleton">
+        <div class="bar w60"></div>
+        <div class="bar w40"></div>
+      </div>
+
+      <div class="device-top">
+        <span class="status-lg" id="statusLine">—</span>
+        <span class="meta" id="version">—</span>
+      </div>
+
+      <div class="addr">
+        <span class="label">网关</span>
+        <span class="value" id="gatewayUrl">—</span>
+        <button class="icon-btn" data-act="act-copy-gateway" aria-label="复制网关地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
+        <button class="icon-btn" data-act="act-open-gateway" aria-label="在浏览器打开网关"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-8.5 8.5"/><path d="M18 14v4.5A2.5 2.5 0 0 1 15.5 21h-9A2.5 2.5 0 0 1 4 18.5v-9A2.5 2.5 0 0 1 6.5 7H11"/></svg></button>
+      </div>
+
+      <div class="addr" id="webRow" style="display:none">
+        <span class="label">网页版</span>
+        <span class="value" id="webUrl">—</span>
+        <button class="icon-btn" data-act="act-toggle-key" aria-label="显示或隐藏 key"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 12S6.2 6 12 6s9.4 6 9.4 6-3.6 6-9.4 6-9.4-6-9.4-6Z"/><circle cx="12" cy="12" r="2.6"/></svg></button>
+        <button class="icon-btn" data-act="act-copy-web" aria-label="复制网页版地址"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M6.5 15H5.2A2.2 2.2 0 0 1 3 12.8V5.2A2.2 2.2 0 0 1 5.2 3h7.6A2.2 2.2 0 0 1 15 5.2V6.5"/></svg></button>
+      </div>
+
+      <div class="notice-callout" id="notice"></div>
+
+      <div class="progress" id="installProgress"><span></span></div>
+
+      <div class="actions">
+        <button class="primary" id="startBtn" data-act="act-start" data-busy>启动网关</button>
+        <button class="primary is-stop" id="stopBtn" data-act="act-stop" data-busy style="display:none">停止网关</button>
+        <button data-act="act-check" data-busy>检查</button>
+      </div>
+
+      <div class="chips">
+        <button data-act="act-install" data-busy>安装 / 重装</button>
+        <button data-act="act-diag" data-busy>环境自检</button>
+      </div>
     </div>
-    <div class="btns">
-      <button data-act="act-diag" data-busy>环境自检</button>
-      <button data-act="act-log">看日志</button>
-      <button data-act="act-copy-log">复制日志</button>
+
+    <div class="chips" id="shellHint" style="display:none">
+      <button data-act="act-term-install" data-busy>终端安装</button>
+      <button data-act="act-term-start" data-busy>终端启动</button>
+      <button data-act="act-term-stop" data-busy>终端停止</button>
     </div>
-    <div class="btns">
-      <button data-act="act-copy-gateway">复制网关地址</button>
-      <button data-act="act-copy-web">复制网页版地址</button>
-      <button data-act="act-open-gateway">打开网关</button>
-      <button data-act="act-open-web">打开网页版</button>
+
+    <section>
+      <h2>启动方式</h2>
+      <div class="field">
+        <label for="startMode">运行模式</label>
+        <select id="startMode">
+          <option value="web">网关 + 网页控制台</option>
+          <option value="serve">仅网关</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="autoStart">随 App 自动启动</label>
+        <select id="autoStart"><option value="1">开</option><option value="0">关</option></select>
+      </div>
+    </section>
+
+    <section>
+      <h2>端口与访问</h2>
+      <div class="row2">
+        <div class="field">
+          <label for="gatewayPort">网关端口</label>
+          <input id="gatewayPort" type="number" min="1" max="65535" inputmode="numeric" />
+        </div>
+        <div class="field" data-when="web">
+          <label for="webPort">网页版端口</label>
+          <input id="webPort" type="number" min="1" max="65535" inputmode="numeric" />
+        </div>
+      </div>
+      <p class="hint">供应商入口固定指向 3425，改端口后那里会连不上。</p>
+      <div class="field" data-when="web">
+        <label for="webKey">网页版 key</label>
+        <input id="webKey" type="text" maxlength="64" placeholder="留空则每次启动随机生成" autocomplete="off" />
+        <p class="hint">至少 16 个字母、数字或 - . _ ~。填了就固定，重启地址不变。</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>安装</h2>
+      <div class="field">
+        <label for="proxyMode">代理用法</label>
+        <select id="proxyMode">
+          <option value="off">不用代理</option>
+          <option value="fallback">直连失败再用</option>
+          <option value="always">始终使用</option>
+        </select>
+      </div>
+      <div class="field" data-when="proxy">
+        <label for="proxy">代理地址</label>
+        <input id="proxy" type="text" maxlength="200" placeholder="http://127.0.0.1:10808" autocomplete="off" />
+      </div>
+    </section>
+
+    <div class="logcard">
+      <header>
+        <span class="t" id="logTitle">日志</span>
+        <span class="btns">
+          <button data-act="act-log">实时</button>
+          <button data-act="act-diag">自检</button>
+          <button data-act="act-copy-log">复制</button>
+        </span>
+      </header>
+      <pre id="log">（暂无日志）</pre>
     </div>
-    <p class="hint" id="installState" style="display:none">正在安装，可能要几分钟，日志会一直往下走。</p>
   </div>
 
-  <div class="card" id="shellHint" style="display:none; margin-top:12px">
-    <div class="row"><span>终端兜底</span><span>插件进程没有 shell，用终端执行</span></div>
-    <div class="btns">
-      <button class="primary" data-act="act-term-install" data-busy>用终端安装</button>
-      <button data-act="act-term-start" data-busy>用终端启动</button>
-      <button data-act="act-term-stop" data-busy>用终端停止</button>
-    </div>
+  <div class="savebar">
+    <button class="primary" data-act="act-save" data-busy>保存设置</button>
   </div>
-
-  <h2>设置</h2>
-  <div class="card">
-    <label for="startMode">启动方式</label>
-    <select id="startMode">
-      <option value="web">网关 + 网页（magpie web）</option>
-      <option value="serve">仅网关（magpie serve）</option>
-    </select>
-
-    <label for="gatewayPort">网关端口</label>
-    <input id="gatewayPort" type="number" min="1" max="65535" inputmode="numeric" />
-    <p class="hint">模型供应商入口默认指向 3425，改端口后那里连不上。</p>
-
-    <div data-when="web">
-      <label for="webPort">网页版端口</label>
-      <input id="webPort" type="number" min="1" max="65535" inputmode="numeric" />
-      <label for="webKey">网页版 key（MAGPIE_WEB_KEY）</label>
-      <input id="webKey" type="text" maxlength="64" placeholder="留空则每次启动随机生成" />
-      <p class="hint">至少 16 个字母、数字或 - . _ ~。</p>
-    </div>
-
-    <label for="proxyMode">代理用法</label>
-    <select id="proxyMode">
-      <option value="off">不用代理</option>
-      <option value="fallback">直连失败再用</option>
-      <option value="always">始终使用</option>
-    </select>
-
-    <div data-when="proxy">
-      <label for="proxy">安装代理</label>
-      <input id="proxy" type="text" maxlength="200" placeholder="http://127.0.0.1:10808" />
-    </div>
-
-    <label for="autoStart">随 App 自动启动</label>
-    <select id="autoStart"><option value="1">开</option><option value="0">关</option></select>
-
-    <div class="btns">
-      <button class="primary" data-act="act-save" data-busy>保存设置</button>
-    </div>
-  </div>
-
-  <h2>日志</h2>
-  <pre id="log">（暂无日志）</pre>
 
   <script src="/__aicode/aicode.js"></script>
   <script src="ui.js"></script>

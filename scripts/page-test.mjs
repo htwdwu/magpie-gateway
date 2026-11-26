@@ -46,8 +46,11 @@ for (const m of html.matchAll(/<(\w+)([^>]*\bid="([A-Za-z0-9_-]+)"[^>]*)>/g)) {
 }
 
 const buttons = [];
-for (const m of html.matchAll(/<button([^>]*)>([^<]*)<\/button>/g)) {
-  const node = makeElement('btn-' + m[2].trim());
+for (const m of html.matchAll(/<button([^>]*)>([\s\S]*?)<\/button>/g)) {
+  // 按钮里可能嵌着 svg 图标，取文本时把标签剥掉
+  const label = m[2].replace(/<[^>]+>/g, '').trim();
+  const node = makeElement('btn-' + (label || m[1].match(/data-act="([a-z-]+)"/)?.[1] || ''));
+  node.label = label;
   for (const a of m[1].matchAll(/([a-z-]+)="([^"]*)"/g)) node.attrs[a[1]] = a[2];
   buttons.push(node);
 }
@@ -161,7 +164,7 @@ try {
   await wait(20);
 
   check('状态文案来自状态机', elements.get('status').textContent === '已安装，未运行', elements.get('status').textContent);
-  check('版本与地址渲染出来', elements.get('version').textContent === 'magpie 0.1.4841' && elements.get('gatewayUrl').textContent === 'http://127.0.0.1:3425', '');
+  check('版本与地址渲染出来', elements.get('version').textContent === 'magpie 0.1.4841' && elements.get('gatewayUrl').textContent === '127.0.0.1:3425', '');
   check('日志灌进 pre', elements.get('log').textContent.includes('line-1'), elements.get('log').textContent);
   check('网页版行在有 key 时显示', elements.get('webRow').style.display === '', elements.get('webRow').style.display);
   check('表单填上当前设置', elements.get('startMode').value === 'web' && elements.get('gatewayPort').value === '3425', '');
