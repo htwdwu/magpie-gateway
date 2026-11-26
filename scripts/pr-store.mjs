@@ -120,7 +120,25 @@ await api('PUT', `/repos/${forkName}/contents/index.json`, {
 });
 console.log('· index.json 已提交');
 
-// 3) 包放进 packages/
+// 3) 清掉同 id 的旧版本包（商店同 id 只保留一个版本）
+try {
+  const listing = await api('GET', `/repos/${forkName}/contents/packages?ref=main`);
+  const stale = (Array.isArray(listing) ? listing : []).filter(
+    (item) => item && item.name && item.name.startsWith(manifest.id + '_') && item.name !== meta.file,
+  );
+  for (const item of stale) {
+    await api('DELETE', `/repos/${forkName}/contents/packages/${item.name}`, {
+      message: `remove old ${item.name}`,
+      sha: item.sha,
+      branch: 'main',
+    });
+    console.log('· 删掉旧包 ' + item.name);
+  }
+} catch (error) {
+  console.log('· 旧包清理跳过：' + error.message);
+}
+
+// 4) 包放进 packages/
 const pkgPath = `packages/${meta.file}`;
 let shaExist = null;
 try {
@@ -137,7 +155,7 @@ await api('PUT', `/repos/${forkName}/contents/${pkgPath}`, {
 });
 console.log('· 包已提交：' + pkgPath);
 
-// 4) PR
+// 5) PR
 let pr = null;
 try {
   pr = await api('POST', `/repos/${UPSTREAM}/pulls`, {
